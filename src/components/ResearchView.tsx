@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle, MessageSquare } from 'lucide-react';
 import { storage, ResearchTask } from '../lib/storage';
 import { runPlannerAgent, runResearcherAgent, runWriterAgent, runCriticAgent } from '../lib/research';
+import { Mascot } from './Mascot';
 import clsx from 'clsx';
 
 const generateId = () => crypto.randomUUID();
 
-export function ResearchView() {
+interface ResearchViewProps {
+  onDiscussInChat?: (text: string) => void;
+}
+
+export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
   const [tasks, setTasks] = useState<ResearchTask[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [newQuery, setNewQuery] = useState('');
@@ -253,9 +258,20 @@ export function ResearchView() {
               {/* Results Section */}
               {activeTask.results.length > 0 && (
                 <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-                  <div className="flex items-center gap-2 mb-4 text-[var(--color-teal)]">
-                    <FileText size={20} />
-                    <h3 className="font-bold text-lg">Research Findings</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2 text-[var(--color-teal)]">
+                      <FileText size={20} />
+                      <h3 className="font-bold text-lg">Research Findings</h3>
+                    </div>
+                    {onDiscussInChat && (
+                      <button
+                        onClick={() => onDiscussInChat(activeTask.results.join('\n\n'))}
+                        className="flex items-center gap-2 text-sm bg-[var(--color-teal)]/10 text-[var(--color-teal)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-teal)] hover:text-[#1a1814] transition-colors"
+                      >
+                        <MessageSquare size={14} />
+                        Discuss in Chat
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-6">
                     {activeTask.results.map((result, idx) => (
@@ -302,7 +318,7 @@ export function ResearchView() {
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <Search size={64} className="text-[var(--color-surface-active)] mb-6" />
+            <Mascot state="searching" className="w-32 h-32 mb-6" />
             <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">Start New Research</h2>
             <p className="text-[var(--color-text-secondary)] max-w-md mb-8">
               Enter a topic below to deploy our multi-agent system. We will analyze sources, extract insights, and compile a report.

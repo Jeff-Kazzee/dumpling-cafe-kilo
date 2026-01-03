@@ -74,6 +74,7 @@ export function Header({
 
       <div className="flex items-center gap-3">
         <select
+          id="model-selector"
           aria-label="Model"
           value={selectedModel}
           onChange={(e) => onModelChange(e.target.value)}

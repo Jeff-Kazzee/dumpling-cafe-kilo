@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React from 'react';
-import { Download, Edit2, Heart, Save } from 'lucide-react';
+import { Download, Edit2, Heart, Save, Image as ImageIcon } from 'lucide-react';
 import { ChatMessage, MediaItem } from '../lib/storage';
 import { Mascot } from './Mascot';
 import clsx from 'clsx';
@@ -14,15 +14,17 @@ interface ChatMessageItemProps {
   onEdit: (image: MediaItem) => void;
   onSavePrompt: (image: MediaItem) => void;
   onFavorite: (image: MediaItem) => void;
+  onViewInMedia: () => void;
 }
 
-export function ChatMessageItem({ 
-  message, 
-  images, 
-  onDownload, 
-  onEdit, 
-  onSavePrompt, 
-  onFavorite 
+export function ChatMessageItem({
+  message,
+  images,
+  onDownload,
+  onEdit,
+  onSavePrompt,
+  onFavorite,
+  onViewInMedia
 }: ChatMessageItemProps) {
   const isUser = message.role === 'user';
 
@@ -92,17 +94,24 @@ export function ChatMessageItem({
                   >
                     <Save size={18} />
                   </button>
-                  <button 
+                  <button
                     onClick={() => onFavorite(img)}
                     className={clsx(
                       "p-2 rounded-full backdrop-blur-sm transition-colors",
-                      img.isFavorite 
-                        ? "bg-[var(--color-soft-red)] text-white" 
+                      img.isFavorite
+                        ? "bg-[var(--color-soft-red)] text-white"
                         : "bg-white/10 hover:bg-white/20 text-white"
                     )}
                     title="Favorite"
                   >
                     <Heart size={18} fill={img.isFavorite ? "currentColor" : "none"} />
+                  </button>
+                  <button
+                    onClick={onViewInMedia}
+                    className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
+                    title="View in Media Hub"
+                  >
+                    <ImageIcon size={18} />
                   </button>
                 </div>
               </div>
