@@ -115,31 +115,63 @@ export async function editImage(
     }
   ];
 
+  console.log('[API] editImage called:', { model, editPrompt, hasMask: !!cleanMask });
+
   try {
-    const response = await client.chat.completions.create({
+    const requestBody: Record<string, unknown> = {
       model: model,
       messages: messages,
       modalities: ['image', 'text'],
-    } as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
+    };
 
-    const imageData = response.choices[0].message.content;
-    
+    // Add image_config for Gemini models (same as generateImage)
+    if (model.includes('gemini')) {
+      requestBody.extra_body = {
+        image_config: {
+          image_size: '1K',
+        }
+      };
+    }
+
+    console.log('[API] editImage request:', requestBody);
+
+    const response = await client.chat.completions.create(
+      requestBody as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+    );
+
+    console.log('[API] editImage response:', response);
+
+    // Check for images array first (newer OpenRouter format) - same as generateImage
+    const message = response.choices[0]?.message;
+    type OpenRouterImage = { image_url: { url: string } };
+    const images = (message as unknown as { images?: OpenRouterImage[] } | undefined)?.images;
+    const imageUrl = images?.[0]?.image_url?.url;
+    if (imageUrl) {
+      console.log('[API] Found edited image in images array');
+      return imageUrl;
+    }
+
+    // Fallback to content
+    const imageData = message?.content;
+
     if (!imageData) {
       throw new Error('No image data received');
     }
 
+    console.log('[API] Processing edit content:', imageData?.substring(0, 100));
+
     if (imageData.startsWith('http')) {
       return imageData;
     }
-    
+
     if (imageData.startsWith('data:image')) {
       return imageData;
     }
-    
+
     return `data:image/png;base64,${imageData}`;
-    
+
   } catch (error) {
-    console.error('Edit error:', error);
+    console.error('[API] Edit error:', error);
     throw error;
   }
 }

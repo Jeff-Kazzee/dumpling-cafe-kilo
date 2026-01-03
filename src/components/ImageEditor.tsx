@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { X, Save, Eraser, Pen, Undo, Redo, Trash2, Wand2, Loader2, Check, RotateCcw } from 'lucide-react';
 import { MediaItem } from '../lib/storage';
 import { editImage } from '../lib/api';
-import { IMAGE_MODELS } from '../lib/models';
+import { EDIT_CAPABLE_MODELS } from '../lib/models';
 
 interface ImageEditorProps {
   image: MediaItem;
@@ -28,7 +28,8 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
 
   // AI Edit State
   const [editPrompt, setEditPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState(IMAGE_MODELS.find(m => m.id.includes('flux'))?.id || IMAGE_MODELS[0].id);
+  // Default to Gemini 2.5 Flash for editing (first edit-capable model)
+  const [selectedModel, setSelectedModel] = useState(EDIT_CAPABLE_MODELS[0]?.id || 'google/gemini-2.5-flash-image');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -353,7 +354,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-2 text-sm text-[var(--color-text-primary)] mb-3 focus:outline-none focus:border-[var(--color-teal)]"
               >
-                {IMAGE_MODELS.map(m => (
+                {EDIT_CAPABLE_MODELS.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
