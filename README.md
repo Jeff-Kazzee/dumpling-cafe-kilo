@@ -122,6 +122,80 @@ Implementation: `extra_body.reasoning.effort` parameter.
 | White image backgrounds | CSS background color bleeding | Changed to `bg-transparent` / CSS variable backgrounds |
 | Aspect ratio ignored | Missing `image_config` for Gemini | Added `extra_body.image_config` with aspect_ratio and image_size |
 
+### Phase 8: Image Editing Fix
+
+#### Problem
+Image editing in Media Hub was completely non-functional. Console showed:
+```
+Edit error: Error: No image data received
+data:image/png;base64,Sure, here's the edited image::1 Failed to load resource: net::ERR_INVALID_URL
+```
+
+The model was returning text ("Sure, here's the edited image:") instead of actual image data.
+
+#### Root Cause Analysis
+**Problem 1**: The `editImage()` function in `api.ts` was missing the `modalities: ['image', 'text']` parameter that tells OpenRouter to return image output instead of text.
+
+**Problem 2**: After adding modalities, editing still failed because FLUX models (the default) are **text-to-image only** - they don't support vision input. The editor was sending the original image for editing, but FLUX can't process image inputs.
+
+#### Solution
+
+1. **Added `modalities` parameter** to `editImage()`:
+```typescript
+const requestBody = {
+  model: model,
+  messages: messages,
+  modalities: ['image', 'text'], // REQUIRED for image output!
+};
+```
+
+2. **Created `supportsEditing` flag** for image models:
+```typescript
+export interface ImageModel {
+  // ...
+  supportsEditing?: boolean; // vision input + image output
+}
+```
+
+3. **Filtered to edit-capable models only**:
+```typescript
+// FLUX = text-to-image only (no editing)
+// Gemini, Seedream, Riverflow = vision + image (supports editing)
+export const EDIT_CAPABLE_MODELS = IMAGE_MODELS.filter(m => m.supportsEditing);
+```
+
+4. **Added Gemini-specific config**:
+```typescript
+if (model.includes('gemini')) {
+  requestBody.extra_body = {
+    image_config: { image_size: '1K' }
+  };
+}
+```
+
+5. **Added response format handling** for OpenRouter's `images` array format:
+```typescript
+const images = message?.images;
+const imageUrl = images?.[0]?.image_url?.url;
+if (imageUrl) return imageUrl;
+```
+
+6. **Canvas performance fix** - Added `willReadFrequently: true` to prevent warnings:
+```typescript
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+```
+
+#### Files Modified
+- `src/lib/api.ts` - Added modalities, extra_body, images array handling
+- `src/lib/models.ts` - Added supportsEditing flag, EDIT_CAPABLE_MODELS export
+- `src/components/ImageEditor.tsx` - Use edit-capable models only, canvas optimization
+
+#### Testing Added
+Created Vitest integration tests (`src/lib/api.test.ts`) that:
+- Verify edit-capable models are properly filtered
+- Test actual image generation with Gemini (requires API key)
+- Test image editing end-to-end (generate → edit → verify output)
+
 ### QA Verification (Claude in Chrome)
 
 | Test | Result | Evidence |
@@ -173,6 +247,24 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
+
+### Testing
+
+```bash
+# Run all tests (unit tests only - no API key needed)
+bun test
+
+# Run with integration tests (requires OpenRouter API key)
+OPENROUTER_API_KEY=sk-or-v1-xxx bun test
+
+# Watch mode
+bun test --watch
+```
+
+#### Test Structure
+- **Unit tests**: Run always, mock external dependencies
+- **Integration tests**: Skipped unless `OPENROUTER_API_KEY` is set
+- Framework: Vitest + React Testing Library + jsdom
 
 ### Project Structure
 
@@ -260,6 +352,9 @@ bun run start
 3. **Test with real requests**: Mock tests wouldn't have caught the missing `modalities` bug
 4. **Local-first works**: IndexedDB + client-side API calls = zero backend complexity
 5. **QA automation**: Claude in Chrome saved hours of manual testing
+6. **Model capabilities differ**: Just because a model generates images doesn't mean it can edit them - FLUX is text-to-image only, while Gemini supports vision input + image output
+7. **Integration tests catch real bugs**: The image editing bug was only found through actual API calls, not unit tests with mocks
+8. **Debug logging is essential**: Adding `console.log` for API requests and responses made the "text instead of image" problem immediately visible
 
 ---
 
