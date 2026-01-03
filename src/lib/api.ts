@@ -119,7 +119,8 @@ export async function editImage(
     const response = await client.chat.completions.create({
       model: model,
       messages: messages,
-    });
+      modalities: ['image', 'text'],
+    } as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
 
     const imageData = response.choices[0].message.content;
     
