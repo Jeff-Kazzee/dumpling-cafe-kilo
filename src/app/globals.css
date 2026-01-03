@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #1a1814;
+  --color-surface: #252220;
+  --color-surface-hover: #2d2a27;
+  --color-surface-active: #353230;
+  --color-border: #3d3835;
+  --color-text-primary: #f5f0e8;
+  --color-text-secondary: #a89f94;
+  --color-text-muted: #6b6560;
+  --color-coral: #e8927c;
+  --color-teal: #7cbecc;
+  --color-sage: #7db07d;
+  --color-gold: #d4a84b;
+  --color-soft-red: #d4726a;
+  --color-lavender: #a78bba;
+}
+
+:root {
+  --background: var(--color-background);
+  --foreground: var(--color-text-primary);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-nunito), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/*
+ * Dumpling Cafe lightweight UI utilities.
+ * Keep these minimal and theme-variable driven.
+ */
+
+.dc-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+
+.dc-card--soft {
+  background: color-mix(in oklab, var(--color-surface) 88%, black 12%);
+}
+
+.dc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  transition: opacity 120ms ease, transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.dc-button:active {
+  transform: translateY(1px);
+}
+
+.dc-button--primary {
+  background: var(--color-teal);
+  color: #1a1814;
+}
+
+.dc-button--primary:hover {
+  opacity: 0.92;
+}
+
+.dc-button--secondary {
+  background: var(--color-surface-active);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.dc-button--secondary:hover {
+  background: var(--color-surface-hover);
+}
+
+.dc-button--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.dc-button--ghost:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.dc-input {
+  width: 100%;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.dc-input:focus {
+  border-color: var(--color-teal);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-teal) 70%, transparent);
+}
+
+/* Ensure Tailwind's `font-mono` picks up the app mono font. */
+.font-mono,
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+/* Optional: subtle noise overlay utility (no external image). */
+.noise-overlay {
+  position: relative;
+}
+
+.noise-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 1px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0) 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(255, 255, 255, 0.05) 1px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0) 4px
+    );
+}
