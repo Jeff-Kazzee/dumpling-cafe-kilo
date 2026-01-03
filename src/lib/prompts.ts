@@ -143,18 +143,8 @@ For technical problems:
 
 Remember: The reasoning trace is part of the value you provide. Make it clear, logical, and insightful.`,
 
-  /**
-   * Image generation prompt guidance
-   */
-  imageGeneration: `You are helping generate an image based on a text prompt.
-
-For best results:
-- Be specific about subjects, style, composition
-- Include lighting, mood, and atmosphere details
-- Mention artistic style if relevant (photography, illustration, etc.)
-- Specify aspect ratio considerations
-
-Generate the image as requested.`,
+  // NOTE: imageGeneration prompt removed - image generation uses direct prompts via modalities API
+  // and doesn't benefit from system prompts in the same way text generation does
 
   /**
    * Research agent prompts
@@ -169,7 +159,7 @@ Break down research topics into clear, actionable subtopics.
 Given a research topic, create a structured plan:
 
 1. Analyze the topic to identify key aspects to investigate
-2. Create 3-5 focused subtopics that together provide comprehensive coverage
+2. Create exactly 3 focused subtopics that together provide comprehensive coverage
 3. Order subtopics logically (foundational concepts first, then specifics)
 
 ## Output Format

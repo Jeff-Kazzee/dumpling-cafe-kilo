@@ -23,14 +23,12 @@ export function Mascot({ state, className }: MascotProps) {
       alt={`Dumpling Mascot - ${state}`}
       className={clsx(
         className,
-        // Use mix-blend-mode to make white backgrounds transparent on dark theme
-        'mix-blend-multiply dark:mix-blend-screen',
+        // mix-blend-multiply: white areas become the base color (dark background)
+        // This effectively makes white PNG backgrounds "transparent" on dark themes
+        // NOTE: Copilot suggested mix-blend-screen but that's WRONG - screen brightens, multiply darkens
+        'mix-blend-multiply bg-transparent',
         needsDerivedTreatment && 'filter brightness-90 saturate-90 opacity-90'
       )}
-      style={{
-        // Remove white background by blending with parent
-        backgroundColor: 'transparent',
-      }}
     />
   );
 }

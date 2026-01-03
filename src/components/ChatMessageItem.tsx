@@ -60,6 +60,7 @@ export function ChatMessageItem({
           )}>
             <button
               onClick={() => setShowReasoning(!showReasoning)}
+              aria-expanded={showReasoning}
               className="w-full px-3 py-1.5 flex items-center gap-2 text-[var(--color-lavender)] hover:bg-[var(--color-lavender)]/10 transition-colors text-xs"
             >
               <Brain size={14} />
@@ -69,9 +70,9 @@ export function ChatMessageItem({
               <span className="flex-1" />
               {showReasoning ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
-            {showReasoning && (
+            {showReasoning && message.reasoning?.trim() && (
               <div className="px-4 pb-3 pt-2 text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap font-mono leading-relaxed border-t border-[var(--color-lavender)]/20 max-h-[300px] overflow-y-auto">
-                {message.reasoning}
+                {message.reasoning.trim()}
               </div>
             )}
           </div>
