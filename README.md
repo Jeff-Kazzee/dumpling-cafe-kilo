@@ -263,6 +263,70 @@ bun run start
 
 ---
 
+## Why Claude Code for Finishing Stages
+
+We used [Claude Code](https://claude.com/claude-code) extensively for documentation, bug fixes, and finishing stages. Here's why:
+
+### Performance Advantage
+
+| Task | Manual Time | Claude Code Time | Speedup |
+|------|-------------|------------------|---------|
+| Writing README | 2-3 hours | 15-20 minutes | 6-10x |
+| API documentation | 1-2 hours | 10 minutes | 6-12x |
+| Bug diagnosis | 30-60 min each | 5 min each | 6-12x |
+| Code review fixes | Variable | 5-10 min | 4-8x |
+
+### Specific Use Cases
+
+1. **Documentation Generation**
+   - Claude Code reads the codebase and generates accurate, consistent docs
+   - No context-switching between code and documentation
+   - Maintains consistency with actual implementation
+
+2. **Bug Diagnosis & Fixes**
+   - Can grep/search entire codebase in seconds
+   - Understands relationships between files
+   - Proposes fixes with full context awareness
+
+3. **Code Review Analysis**
+   - Critically evaluates automated review suggestions (Copilot, CodeRabbit)
+   - Catches incorrect suggestions (e.g., Copilot suggested wrong CSS blend mode)
+   - Applies domain knowledge to validate fixes
+
+4. **System Prompt Engineering**
+   - Generated comprehensive prompts for all AI modes (chat, web search, reasoning)
+   - Ensured consistency between prompt instructions and actual code behavior
+   - Created research agent prompts (planner, researcher, writer, quick)
+
+### Critical Insight: Don't Blindly Trust AI Reviews
+
+During code review, Copilot suggested changing `mix-blend-multiply` to `mix-blend-screen`. This was **WRONG**:
+
+- `mix-blend-multiply`: White areas become the base color (correct for dark backgrounds)
+- `mix-blend-screen`: Brightens colors (white stays white - wrong for our use case)
+
+Claude Code caught this by understanding the actual problem (white PNG backgrounds on dark theme) rather than just accepting the automated suggestion.
+
+### When to Use Claude Code
+
+| Use Case | Benefit |
+|----------|---------|
+| Writing docs for complex features | Full codebase context |
+| Debugging cross-file issues | Can trace dependencies |
+| Refactoring with confidence | Understands impact |
+| Code review validation | Catches incorrect suggestions |
+| Creating consistent patterns | Applies learnings across files |
+
+### When NOT to Use Claude Code
+
+| Avoid For | Why |
+|-----------|-----|
+| Initial creative design | Human intuition better for UX |
+| Business logic decisions | Requires domain expertise |
+| Final review of shipped code | Human accountability needed |
+
+---
+
 ## License
 
 MIT

@@ -1,5 +1,6 @@
 import { generateText } from './api';
 import { CHAT_MODELS } from './models';
+import { getResearchPrompt } from './prompts';
 
 // Research model configuration - user can override these
 export interface ResearchModels {
@@ -83,15 +84,19 @@ function calculateCost(model: string, usage?: { prompt_tokens: number; completio
 
 // All agent functions now accept model as parameter
 export async function runPlannerAgent(topic: string, model: string): Promise<AgentResult> {
-  const prompt = `Break down "${topic}" into exactly 3 research sections.
+  const systemPrompt = getResearchPrompt('planner');
+  const userPrompt = `Research topic: "${topic}"
+
+Break this down into 3 focused subtopics that together provide comprehensive coverage.
 
 Return ONLY a JSON array of 3 strings. Example:
-["Section 1 Title", "Section 2 Title", "Section 3 Title"]
-
-No other text.`;
+["Section 1 Title", "Section 2 Title", "Section 3 Title"]`;
 
   const result = await generateText(
-    [{ role: 'user', content: prompt }],
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
     model,
     0.2,
     500
@@ -108,13 +113,22 @@ export async function runResearcherAgent(subtopic: string, model: string, useWeb
   // Add :online suffix for web search if requested
   const actualModel = useWebSearch && !model.includes(':online') ? `${model}:online` : model;
 
-  const prompt = `Research "${subtopic}" and provide key facts and findings.
+  const systemPrompt = getResearchPrompt('researcher');
+  const userPrompt = `Research subtopic: "${subtopic}"
 
-Be concise - 3-5 bullet points with specific facts, dates, or numbers.
-Include sources if available.`;
+Gather comprehensive information and key facts. Include:
+- Specific facts, data, and statistics
+- Important dates and timeline
+- Key concepts and definitions
+- Sources where available
+
+Be thorough but concise.`;
 
   const result = await generateText(
-    [{ role: 'user', content: prompt }],
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
     actualModel,
     0.5,
     1000
@@ -128,18 +142,27 @@ Include sources if available.`;
 }
 
 export async function runWriterAgent(section: string, notes: string, model: string, feedback?: string): Promise<AgentResult> {
-  let prompt = `Write a brief section about "${section}" using these notes:
+  const systemPrompt = getResearchPrompt('writer');
+  let userPrompt = `Section title: "${section}"
 
+Research notes:
 ${notes}
 
-Keep it under 300 words. Use markdown formatting.`;
+Write a polished, well-structured section based on these notes.
+- Keep it under 300 words
+- Use markdown formatting
+- Make complex topics accessible
+- Ensure smooth flow and readability`;
 
   if (feedback) {
-    prompt += `\n\nRevise based on: ${feedback}`;
+    userPrompt += `\n\nRevision feedback: ${feedback}`;
   }
 
   const result = await generateText(
-    [{ role: 'user', content: prompt }],
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
     model,
     0.7,
     1500
@@ -157,18 +180,22 @@ export async function runQuickResearch(topic: string, model: string): Promise<Ag
   // Add :online suffix for web search
   const actualModel = !model.includes(':online') ? `${model}:online` : model;
 
-  const prompt = `Research "${topic}" comprehensively.
+  const systemPrompt = getResearchPrompt('quick');
+  const userPrompt = `Research query: "${topic}"
 
-Provide:
-1. Overview (2-3 sentences)
-2. Key Facts (5 bullet points)
-3. Recent Developments (if any)
-4. Sources
+Provide a comprehensive quick research response including:
+1. **Overview**: Brief summary (2-3 sentences)
+2. **Key Facts**: Most important points (5 bullet points)
+3. **Recent Developments**: Latest news or changes (if relevant)
+4. **Sources**: List of references
 
-Be factual and concise.`;
+Be factual, accurate, and cite your sources.`;
 
   const result = await generateText(
-    [{ role: 'user', content: prompt }],
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
     actualModel,
     0.5,
     2000
