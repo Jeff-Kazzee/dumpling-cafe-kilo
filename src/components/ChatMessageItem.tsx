@@ -1,8 +1,8 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import React from 'react';
-import { Download, Edit2, Heart, Save, Image as ImageIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Download, Edit2, Heart, Save, Image as ImageIcon, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 import { ChatMessage, MediaItem } from '../lib/storage';
 import { Mascot } from './Mascot';
 import clsx from 'clsx';
@@ -27,6 +27,8 @@ export function ChatMessageItem({
   onViewInMedia
 }: ChatMessageItemProps) {
   const isUser = message.role === 'user';
+  // Start collapsed by default - users can expand if interested
+  const [showReasoning, setShowReasoning] = useState(false);
 
   return (
     <div className={clsx("flex gap-4 mb-6", isUser ? "flex-row-reverse" : "flex-row")}>
@@ -48,12 +50,39 @@ export function ChatMessageItem({
         "max-w-[85%] space-y-3",
         isUser ? "items-end flex flex-col" : "items-start"
       )}>
+        {/* Reasoning Trace - ABOVE the message, collapsed by default for easy ignoring */}
+        {!isUser && message.reasoning && (
+          <div className={clsx(
+            "w-full rounded-lg overflow-hidden transition-all",
+            showReasoning
+              ? "bg-[var(--color-lavender)]/10 border border-[var(--color-lavender)]/30"
+              : "bg-[var(--color-lavender)]/5 border border-[var(--color-lavender)]/20"
+          )}>
+            <button
+              onClick={() => setShowReasoning(!showReasoning)}
+              className="w-full px-3 py-1.5 flex items-center gap-2 text-[var(--color-lavender)] hover:bg-[var(--color-lavender)]/10 transition-colors text-xs"
+            >
+              <Brain size={14} />
+              <span className="font-medium opacity-80">
+                {showReasoning ? 'Hide Reasoning' : 'Show Reasoning Trace'}
+              </span>
+              <span className="flex-1" />
+              {showReasoning ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {showReasoning && (
+              <div className="px-4 pb-3 pt-2 text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap font-mono leading-relaxed border-t border-[var(--color-lavender)]/20 max-h-[300px] overflow-y-auto">
+                {message.reasoning}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Text Bubble */}
         {message.content && (
           <div className={clsx(
             "px-4 py-3 rounded-2xl whitespace-pre-wrap",
-            isUser 
-              ? "bg-[var(--color-teal)] text-[#1a1814] rounded-tr-none" 
+            isUser
+              ? "bg-[var(--color-teal)] text-[#1a1814] rounded-tr-none"
               : "bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] rounded-tl-none"
           )}>
             {message.content}
