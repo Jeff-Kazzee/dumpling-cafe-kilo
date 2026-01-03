@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle, MessageSquare } from 'lucide-react';
+import { Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle, MessageSquare, Trash2, Plus } from 'lucide-react';
 import { storage, ResearchTask } from '../lib/storage';
 import { runPlannerAgent, runResearcherAgent, runWriterAgent, runCriticAgent } from '../lib/research';
 import { Mascot } from './Mascot';
@@ -17,7 +17,9 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
   const [tasks, setTasks] = useState<ResearchTask[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [newQuery, setNewQuery] = useState('');
+  const [showNewResearch, setShowNewResearch] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -55,9 +57,30 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
     setTasks(prev => [task, ...prev]);
     setActiveTaskId(task.id);
     setNewQuery('');
+    setShowNewResearch(false);
     await storage.save('research', task);
 
     executeResearch(task.id, task.query);
+  };
+
+  const deleteTask = async (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Delete this research task?')) return;
+
+    await storage.delete('research', taskId);
+    setTasks(prev => {
+      const remaining = prev.filter(t => t.id !== taskId);
+      if (activeTaskId === taskId) {
+        setActiveTaskId(remaining[0]?.id || null);
+      }
+      return remaining;
+    });
+  };
+
+  const handleNewResearch = () => {
+    setShowNewResearch(true);
+    setActiveTaskId(null);
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   const addLog = (taskId: string, agent: string, message: string) => {
@@ -179,11 +202,11 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
       {/* Sidebar Task List */}
       <div className="w-80 border-r border-[var(--color-border)] flex flex-col bg-[var(--color-surface)] shrink-0">
         <div className="p-4 border-b border-[var(--color-border)]">
-          <button 
-            onClick={() => setNewQuery('')} // Just focus input
+          <button
+            onClick={handleNewResearch}
             className="w-full bg-[var(--color-teal)] text-[#1a1814] py-2 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-opacity-90"
           >
-            <Play size={16} /> New Research
+            <Plus size={16} /> New Research
           </button>
         </div>
         
@@ -191,13 +214,22 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
           {tasks.map(task => (
             <div
               key={task.id}
-              onClick={() => setActiveTaskId(task.id)}
+              onClick={() => { setActiveTaskId(task.id); setShowNewResearch(false); }}
               className={clsx(
-                "p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors",
-                activeTaskId === task.id ? "bg-[var(--color-surface-active)]" : ""
+                "p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors group",
+                activeTaskId === task.id && !showNewResearch ? "bg-[var(--color-surface-active)]" : ""
               )}
             >
-              <h3 className="font-medium text-[var(--color-text-primary)] line-clamp-1 mb-1">{task.query}</h3>
+              <div className="flex justify-between items-start gap-2">
+                <h3 className="font-medium text-[var(--color-text-primary)] line-clamp-1 mb-1 flex-1">{task.query}</h3>
+                <button
+                  onClick={(e) => deleteTask(task.id, e)}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--color-coral)]/20 rounded transition-all"
+                  title="Delete research"
+                >
+                  <Trash2 size={14} className="text-[var(--color-coral)]" />
+                </button>
+              </div>
               <div className="flex justify-between items-center text-xs">
                 <span className={clsx(
                   "px-2 py-0.5 rounded-full",
@@ -217,7 +249,7 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {activeTask ? (
+        {activeTask && !showNewResearch ? (
           <div className="flex-1 flex flex-col h-full overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -326,16 +358,19 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
             
             <div className="w-full max-w-xl relative">
               <input
+                ref={inputRef}
                 type="text"
                 value={newQuery}
                 onChange={(e) => setNewQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && startResearch()}
                 placeholder="e.g., 'Impact of Quantum Computing on Cryptography'"
                 className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-xl pl-6 pr-14 py-4 text-lg focus:outline-none focus:border-[var(--color-teal)] shadow-lg"
+                autoFocus
               />
               <button
                 onClick={startResearch}
-                className="absolute right-2 top-2 bottom-2 bg-[var(--color-teal)] text-[#1a1814] px-4 rounded-lg hover:bg-opacity-90 transition-colors"
+                disabled={!newQuery.trim()}
+                className="absolute right-2 top-2 bottom-2 bg-[var(--color-teal)] text-[#1a1814] px-4 rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
               >
                 <Play size={20} />
               </button>
