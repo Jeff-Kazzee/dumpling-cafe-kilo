@@ -64,11 +64,11 @@ export function ChatMessageItem({
         {images && images.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
             {images.map((img) => (
-              <div key={img.id} className="group relative bg-[var(--color-surface)] rounded-xl overflow-hidden border border-[var(--color-border)]">
-                <img 
-                  src={img.url} 
-                  alt={img.prompt} 
-                  className="w-full h-auto object-cover aspect-square"
+              <div key={img.id} className="group relative bg-transparent rounded-xl overflow-hidden border border-[var(--color-border)]">
+                <img
+                  src={img.url}
+                  alt={img.prompt}
+                  className="w-full h-auto object-cover aspect-square bg-[var(--color-surface)]"
                 />
                 
                 {/* Overlay Actions */}

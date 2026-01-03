@@ -53,15 +53,15 @@ export function MediaView() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pb-10">
         {images.map((img) => (
-          <div 
-            key={img.id} 
+          <div
+            key={img.id}
             onClick={() => setEditingImage(img)}
-            className="group relative aspect-square bg-[var(--color-surface)] rounded-xl overflow-hidden border border-[var(--color-border)] cursor-pointer hover:border-[var(--color-teal)] transition-all"
+            className="group relative aspect-square bg-transparent rounded-xl overflow-hidden border border-[var(--color-border)] cursor-pointer hover:border-[var(--color-teal)] transition-all"
           >
-            <img 
-              src={img.url} 
-              alt={img.prompt} 
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            <img
+              src={img.url}
+              alt={img.prompt}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 bg-[var(--color-surface)]"
             />
             
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">

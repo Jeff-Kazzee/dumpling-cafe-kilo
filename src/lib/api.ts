@@ -23,50 +23,57 @@ async function getClient() {
 export async function generateImage(prompt: string, model: string, aspectRatio: string): Promise<string> {
   const client = await getClient();
 
-  try {
-    const response = await client.chat.completions.create({
-      model: model,
-      messages: [
-        { role: 'user', content: prompt }
-      ],
-      // For Gemini models, add image_config
-      ...(model.includes('gemini') && {
-        extra_body: {
-          image_config: {
-            aspect_ratio: aspectRatio,
-          }
-        }
-      })
-    });
+  console.log('[API] generateImage called:', { prompt, model, aspectRatio });
 
-    // Response includes base64 image in content
-    const imageData = response.choices[0].message.content;
-    
+  try {
+    const requestBody: Record<string, unknown> = {
+      model: model,
+      messages: [{ role: 'user', content: prompt }],
+      modalities: ['image', 'text'], // REQUIRED!
+    };
+
+    // Add image_config for Gemini models
+    if (model.includes('gemini')) {
+      requestBody.extra_body = {
+        image_config: {
+          aspect_ratio: aspectRatio,
+          image_size: '1K',
+        }
+      };
+    }
+
+    console.log('[API] Request body:', requestBody);
+
+    const response = await client.chat.completions.create(
+      requestBody as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+    );
+
+    console.log('[API] Response:', response);
+
+    // Check for images array first (newer format)
+    const message = response.choices[0]?.message;
+    type OpenRouterImage = { image_url: { url: string } };
+    const images = (message as unknown as { images?: OpenRouterImage[] } | undefined)?.images;
+    const imageUrl = images?.[0]?.image_url?.url;
+    if (imageUrl) {
+      console.log('[API] Found image in images array');
+      return imageUrl;
+    }
+
+    // Fallback to content
+    const imageData = message?.content;
     if (!imageData) {
       throw new Error('No image data received');
     }
 
-    // Parse and extract image if it's not raw base64 (some models might wrap it)
-    // But per spec, we assume it's the content.
-    // If it's a URL, we return it. If it's base64, we might need to prefix it if missing.
-    // The spec says "Response includes base64 image in content".
-    // Let's assume it's ready to use or needs data:image/png;base64 prefix if not present.
-    
-    // Check if it's a URL
-    if (imageData.startsWith('http')) {
-      return imageData;
-    }
-    
-    // Check if it already has the prefix
-    if (imageData.startsWith('data:image')) {
-      return imageData;
-    }
-    
-    // Assume base64 png
+    console.log('[API] Processing content as image data');
+
+    if (imageData.startsWith('http')) return imageData;
+    if (imageData.startsWith('data:image')) return imageData;
     return `data:image/png;base64,${imageData}`;
 
   } catch (error) {
-    console.error('Generation error:', error);
+    console.error('[API] Image generation error:', error);
     throw error;
   }
 }
@@ -163,4 +170,69 @@ export async function generateText(
     console.error('Text generation error:', error);
     throw error;
   }
+}
+
+// Web search enabled chat - uses :online suffix for web search
+export async function generateTextWithSearch(
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  model: string
+): Promise<{ content: string; citations?: unknown[] }> {
+  const client = await getClient();
+
+  console.log('[API] generateTextWithSearch called:', { model, messagesCount: messages.length });
+
+  try {
+    // Use :online suffix for web search
+    const response = await client.chat.completions.create({
+      model: `${model}:online`,  // Appends web search capability
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 4000,
+    });
+
+    console.log('[API] Web search response received');
+
+    const choice = response.choices[0];
+    const content = choice?.message?.content || '';
+    const citations = ((choice?.message as unknown as { annotations?: unknown[] })?.annotations) ?? [];
+
+    return { content, citations };
+  } catch (error) {
+    console.error('[API] Web search error:', error);
+    throw error;
+  }
+}
+
+// Reasoning mode enabled chat - uses extended thinking
+export async function generateTextWithReasoning(
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  model: string,
+  effort: 'high' | 'medium' | 'low' = 'medium'
+): Promise<{ content: string; reasoning?: string }> {
+  const client = await getClient();
+
+  console.log('[API] generateTextWithReasoning called:', { model, effort, messagesCount: messages.length });
+
+  const requestBody: Record<string, unknown> = {
+    model: model,
+    messages: messages,
+    extra_body: {
+      reasoning: {
+        effort: effort,
+        exclude: false, // Include reasoning in response
+      },
+    },
+  };
+
+  const response = await client.chat.completions.create(
+    requestBody as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+  );
+
+  console.log('[API] Reasoning response:', response);
+
+  const choice = response.choices[0];
+  const content = choice?.message?.content || '';
+  const reasoning = ((choice?.message as unknown as { reasoning?: string })?.reasoning) ?? '';
+
+  return { content, reasoning };
 }

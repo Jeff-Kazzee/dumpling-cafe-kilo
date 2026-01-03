@@ -64,7 +64,15 @@ export default function Home() {
       }
 
       // Tab switching
-      if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      const activeEl = document.activeElement as HTMLElement | null;
+      const activeTag = activeEl?.tagName;
+      const isTypingContext =
+        activeTag === 'INPUT' ||
+        activeTag === 'TEXTAREA' ||
+        activeTag === 'SELECT' ||
+        !!activeEl?.isContentEditable;
+
+      if (!isTypingContext) {
         if (e.key === '1') setActiveTab('chat');
         if (e.key === '2') setActiveTab('research');
         if (e.key === '3') setActiveTab('prompts');

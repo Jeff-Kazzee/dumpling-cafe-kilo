@@ -8,6 +8,8 @@ export interface ChatMessage {
   timestamp: number;
   attachments?: string[];
   imageIds?: string[];
+  citations?: unknown[];
+  reasoning?: string;
 }
 
 export interface ChatSession {

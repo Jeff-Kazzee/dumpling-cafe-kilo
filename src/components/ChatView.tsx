@@ -8,7 +8,7 @@ import { ChatInput } from './ChatInput';
 import { ChatMessageItem } from './ChatMessageItem';
 import { SavePromptModal } from './SavePromptModal';
 import { ImageEditor } from './ImageEditor';
-import { generateImage } from '../lib/api';
+import { generateImage, generateText, generateTextWithSearch, generateTextWithReasoning } from '../lib/api';
 
 const generateId = () => crypto.randomUUID();
 
@@ -112,7 +112,7 @@ export function ChatView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSend = async (text: string, model: string, aspectRatio: string) => {
+  const handleSend = async (text: string, model: string, aspectRatio: string, mode: 'chat' | 'image', webSearch: boolean = false, reasoning: boolean = false, reasoningEffort: 'high' | 'medium' | 'low' = 'medium') => {
     if (!activeSessionId) return;
     if (!apiKey) {
       onOpenSettings();
@@ -144,28 +144,70 @@ export function ChatView({
     }
 
     try {
-      // Generate Image
-      setMascotState('writing');
-      const imageUrl = await generateImage(text, model, aspectRatio);
-      
-      // Save Image
-      const mediaItem: MediaItem = {
-        id: generateId(),
-        url: imageUrl,
-        prompt: text,
-        timestamp: Date.now(),
-        metadata: { model, aspectRatio }
-      };
-      await storage.save('media', mediaItem);
+      let aiMsg: ChatMessage;
 
-      // Create Assistant Message
-      const aiMsg: ChatMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: `Here is your image for "${text}"`,
-        timestamp: Date.now(),
-        imageIds: [mediaItem.id]
-      };
+      if (mode === 'chat') {
+        // Generate Text Response
+        setMascotState(webSearch ? 'searching' : 'writing');
+        
+        // Build conversation history for context
+        const conversationMessages = updatedMessages.map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        }));
+        
+        let responseContent: string;
+        let citations: unknown[] | undefined;
+        let reasoningText: string | undefined;
+        
+        if (reasoning) {
+          // Use reasoning mode generation
+          setMascotState('thinking');
+          const response = await generateTextWithReasoning(conversationMessages, model, reasoningEffort);
+          responseContent = response.content;
+          reasoningText = response.reasoning;
+        } else if (webSearch) {
+          // Use web search enabled generation
+          const response = await generateTextWithSearch(conversationMessages, model);
+          responseContent = response.content;
+          citations = response.citations;
+        } else {
+          // Use regular text generation
+          const response = await generateText(conversationMessages, model);
+          responseContent = response.content;
+        }
+        
+        aiMsg = {
+          id: generateId(),
+          role: 'assistant',
+          content: responseContent,
+          timestamp: Date.now(),
+          citations: citations,
+          reasoning: reasoningText,
+        };
+      } else {
+        // Generate Image
+        setMascotState('writing');
+        const imageUrl = await generateImage(text, model, aspectRatio);
+        
+        // Save Image
+        const mediaItem: MediaItem = {
+          id: generateId(),
+          url: imageUrl,
+          prompt: text,
+          timestamp: Date.now(),
+          metadata: { model, aspectRatio }
+        };
+        await storage.save('media', mediaItem);
+
+        aiMsg = {
+          id: generateId(),
+          role: 'assistant',
+          content: `Here is your image for "${text}"`,
+          timestamp: Date.now(),
+          imageIds: [mediaItem.id]
+        };
+      }
 
       const finalMessages = [...updatedMessages, aiMsg];
       setMessages(finalMessages);
@@ -190,7 +232,9 @@ export function ChatView({
       const errorMsg: ChatMessage = {
         id: generateId(),
         role: 'assistant',
-        content: "Sorry, I couldn't generate that image. Please check your API key or try again.",
+        content: mode === 'chat'
+          ? "Sorry, I couldn't generate a response. Please check your API key or try again."
+          : "Sorry, I couldn't generate that image. Please check your API key or try again.",
         timestamp: Date.now()
       };
       setMessages([...updatedMessages, errorMsg]);
