@@ -1,17 +1,70 @@
 import { generateText } from './api';
+import { CHAT_MODELS } from './models';
 
-// Use FREE models for speed and cost
-const MODELS = {
-  planner: 'deepseek/deepseek-v3.2',      // Fast, cheap, good at structured output
-  researcher: 'deepseek/deepseek-v3.2:online',  // With web search!
-  writer: 'deepseek/deepseek-v3.2',       // Fast writer
-  critic: 'deepseek/deepseek-v3.2',       // Fast critic
+// Research model configuration - user can override these
+export interface ResearchModels {
+  planner: string;
+  researcher: string;
+  writer: string;
+}
+
+// Get research-capable models from CHAT_MODELS
+export function getResearchModels() {
+  return CHAT_MODELS.filter(m =>
+    m.capabilities.includes('reasoning') ||
+    m.capabilities.includes('coding') ||
+    m.capabilities.includes('agentic')
+  );
+}
+
+// Default presets for quick selection
+export const RESEARCH_PRESETS: Record<string, { name: string; description: string; models: ResearchModels }> = {
+  fast: {
+    name: 'Fast & Cheap',
+    description: 'DeepSeek V3.2 - quick results, minimal cost (~$0.001/research)',
+    models: {
+      planner: 'deepseek/deepseek-v3.2',
+      researcher: 'deepseek/deepseek-v3.2',
+      writer: 'deepseek/deepseek-v3.2',
+    }
+  },
+  balanced: {
+    name: 'Balanced',
+    description: 'Mix of speed and quality (~$0.01/research)',
+    models: {
+      planner: 'anthropic/claude-haiku-4.5',
+      researcher: 'x-ai/grok-4.1-fast',
+      writer: 'anthropic/claude-haiku-4.5',
+    }
+  },
+  quality: {
+    name: 'High Quality',
+    description: 'Claude Sonnet - best results, slower (~$0.10/research)',
+    models: {
+      planner: 'anthropic/claude-sonnet-4.5',
+      researcher: 'anthropic/claude-sonnet-4.5',
+      writer: 'anthropic/claude-sonnet-4.5',
+    }
+  },
+  custom: {
+    name: 'Custom',
+    description: 'Choose your own models',
+    models: {
+      planner: 'deepseek/deepseek-v3.2',
+      researcher: 'deepseek/deepseek-v3.2',
+      writer: 'deepseek/deepseek-v3.2',
+    }
+  }
 };
 
-// Pricing constants (per 1M tokens)
+// Pricing constants (per 1M tokens) - for cost estimation
 const PRICING: Record<string, { input: number; output: number }> = {
   'deepseek/deepseek-v3.2': { input: 0.28, output: 0.48 },
-  'deepseek/deepseek-v3.2:online': { input: 0.28, output: 0.48 },
+  'x-ai/grok-4.1-fast': { input: 0.20, output: 0.50 },
+  'anthropic/claude-haiku-4.5': { input: 1.00, output: 5.00 },
+  'anthropic/claude-sonnet-4.5': { input: 3.00, output: 15.00 },
+  'google/gemini-3-flash-preview': { input: 0.50, output: 3.00 },
+  'openai/gpt-5.2': { input: 5.00, output: 15.00 },
 };
 
 export interface AgentResult {
@@ -24,12 +77,12 @@ function calculateCost(model: string, usage?: { prompt_tokens: number; completio
   if (!usage) return 0;
   const baseModel = model.replace(':online', '');
   const price = PRICING[baseModel];
-  if (!price) return 0;
+  if (!price) return 0.001; // Default small cost if unknown
   return (usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000;
 }
 
-export async function runPlannerAgent(topic: string): Promise<AgentResult> {
-  const model = MODELS.planner;
+// All agent functions now accept model as parameter
+export async function runPlannerAgent(topic: string, model: string): Promise<AgentResult> {
   const prompt = `Break down "${topic}" into exactly 3 research sections.
 
 Return ONLY a JSON array of 3 strings. Example:
@@ -41,7 +94,7 @@ No other text.`;
     [{ role: 'user', content: prompt }],
     model,
     0.2,
-    500  // Limit tokens
+    500
   );
 
   return {
@@ -51,8 +104,10 @@ No other text.`;
   };
 }
 
-export async function runResearcherAgent(subtopic: string): Promise<AgentResult> {
-  const model = MODELS.researcher;  // Has :online for web search
+export async function runResearcherAgent(subtopic: string, model: string, useWebSearch: boolean = true): Promise<AgentResult> {
+  // Add :online suffix for web search if requested
+  const actualModel = useWebSearch && !model.includes(':online') ? `${model}:online` : model;
+
   const prompt = `Research "${subtopic}" and provide key facts and findings.
 
 Be concise - 3-5 bullet points with specific facts, dates, or numbers.
@@ -60,9 +115,9 @@ Include sources if available.`;
 
   const result = await generateText(
     [{ role: 'user', content: prompt }],
-    model,
+    actualModel,
     0.5,
-    1000  // Limit tokens
+    1000
   );
 
   return {
@@ -72,8 +127,7 @@ Include sources if available.`;
   };
 }
 
-export async function runWriterAgent(section: string, notes: string, feedback?: string): Promise<AgentResult> {
-  const model = MODELS.writer;
+export async function runWriterAgent(section: string, notes: string, model: string, feedback?: string): Promise<AgentResult> {
   let prompt = `Write a brief section about "${section}" using these notes:
 
 ${notes}
@@ -88,7 +142,7 @@ Keep it under 300 words. Use markdown formatting.`;
     [{ role: 'user', content: prompt }],
     model,
     0.7,
-    1500  // Limit tokens
+    1500
   );
 
   return {
@@ -98,45 +152,11 @@ Keep it under 300 words. Use markdown formatting.`;
   };
 }
 
-export async function runCriticAgent(draft: string): Promise<AgentResult & { score: number; passed: boolean }> {
-  const model = MODELS.critic;
-  const prompt = `Rate this draft 1-10 and say PASSED (8+) or FAILED.
+// Quick research - single call with web search
+export async function runQuickResearch(topic: string, model: string): Promise<AgentResult> {
+  // Add :online suffix for web search
+  const actualModel = !model.includes(':online') ? `${model}:online` : model;
 
-Draft:
-${draft.slice(0, 1500)}
-
-Reply in exactly this format:
-SCORE: [number]
-VERDICT: PASSED or FAILED
-FEEDBACK: [one sentence]`;
-
-  const result = await generateText(
-    [{ role: 'user', content: prompt }],
-    model,
-    0.3,
-    200  // Very short response needed
-  );
-
-  const content = result.content;
-  const scoreMatch = content.match(/SCORE:\s*(\d+)/i);
-  const verdictMatch = content.match(/VERDICT:\s*(PASSED|FAILED)/i);
-
-  // Default to passed to avoid infinite loops
-  const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 8;
-  const passed = verdictMatch ? verdictMatch[1].toUpperCase() === 'PASSED' : true;
-
-  return {
-    content: result.content,
-    cost: calculateCost(model, result.usage),
-    usage: result.usage,
-    score,
-    passed
-  };
-}
-
-// Simple single-call research for fast results
-export async function runQuickResearch(topic: string): Promise<AgentResult> {
-  const model = 'deepseek/deepseek-v3.2:online';
   const prompt = `Research "${topic}" comprehensively.
 
 Provide:
@@ -149,7 +169,7 @@ Be factual and concise.`;
 
   const result = await generateText(
     [{ role: 'user', content: prompt }],
-    model,
+    actualModel,
     0.5,
     2000
   );

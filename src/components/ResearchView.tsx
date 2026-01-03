@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle, MessageSquare, Trash2, Plus } from 'lucide-react';
+import { Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle, MessageSquare, Trash2, Plus, Settings } from 'lucide-react';
 import { storage, ResearchTask } from '../lib/storage';
-import { runPlannerAgent, runResearcherAgent, runWriterAgent, runCriticAgent, runQuickResearch } from '../lib/research';
+import { runPlannerAgent, runResearcherAgent, runWriterAgent, runQuickResearch, RESEARCH_PRESETS, ResearchModels, getResearchModels } from '../lib/research';
 import { Mascot } from './Mascot';
 import clsx from 'clsx';
 
@@ -19,8 +19,14 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
   const [newQuery, setNewQuery] = useState('');
   const [showNewResearch, setShowNewResearch] = useState(false);
   const [researchMode, setResearchMode] = useState<'quick' | 'deep'>('quick');
+  const [preset, setPreset] = useState<'fast' | 'balanced' | 'quality' | 'custom'>('fast');
+  const [customModels, setCustomModels] = useState<ResearchModels>(RESEARCH_PRESETS.fast.models);
+  const [showModelSettings, setShowModelSettings] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Get current models based on preset
+  const currentModels = preset === 'custom' ? customModels : RESEARCH_PRESETS[preset].models;
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -61,7 +67,7 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
     setShowNewResearch(false);
     await storage.save('research', task);
 
-    executeResearch(task.id, task.query, researchMode);
+    executeResearch(task.id, task.query, researchMode, currentModels);
   };
 
   const deleteTask = async (taskId: string, e: React.MouseEvent) => {
@@ -109,16 +115,16 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
     }));
   };
 
-  const executeResearch = async (taskId: string, query: string, mode: 'quick' | 'deep') => {
+  const executeResearch = async (taskId: string, query: string, mode: 'quick' | 'deep', models: ResearchModels) => {
     let currentCost = 0;
 
     try {
       if (mode === 'quick') {
         // QUICK MODE: Single API call with web search
-        addLog(taskId, 'Researcher', `Quick research: "${query}" (with web search)...`);
+        addLog(taskId, 'Researcher', `Quick research using ${models.researcher.split('/').pop()}...`);
         updateTaskState(taskId, { progress: 30 });
 
-        const result = await runQuickResearch(query);
+        const result = await runQuickResearch(query, models.researcher);
         currentCost += result.cost;
         updateTaskState(taskId, { totalCost: currentCost, progress: 90 });
 
@@ -134,10 +140,10 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
       }
 
       // DEEP MODE: Multi-agent pipeline
-      addLog(taskId, 'Planner', `Planning research for: "${query}"...`);
+      addLog(taskId, 'Planner', `Planning with ${models.planner.split('/').pop()}...`);
       updateTaskState(taskId, { progress: 5 });
 
-      const plannerResult = await runPlannerAgent(query);
+      const plannerResult = await runPlannerAgent(query, models.planner);
       currentCost += plannerResult.cost;
       updateTaskState(taskId, { totalCost: currentCost, progress: 15 });
 
@@ -155,7 +161,6 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
         subtopics = ['Overview', 'Key Findings', 'Conclusion'];
       }
 
-      // Limit to 3 subtopics max for speed
       subtopics = subtopics.slice(0, 3);
       addLog(taskId, 'Planner', `Sections: ${subtopics.join(', ')}`);
       updateTaskState(taskId, { progress: 20 });
@@ -166,23 +171,20 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
         const subtopic = subtopics[i];
         const baseProgress = 20 + (i * 25);
 
-        // Researcher (with web search)
         addLog(taskId, 'Researcher', `Researching: "${subtopic}"...`);
         updateTaskState(taskId, { progress: baseProgress + 5 });
 
-        const researchResult = await runResearcherAgent(subtopic);
+        const researchResult = await runResearcherAgent(subtopic, models.researcher, true);
         currentCost += researchResult.cost;
         updateTaskState(taskId, { totalCost: currentCost, progress: baseProgress + 10 });
         addLog(taskId, 'Researcher', `Found data for ${subtopic}.`);
 
-        // Writer
         addLog(taskId, 'Writer', `Writing: "${subtopic}"...`);
-        const writerResult = await runWriterAgent(subtopic, researchResult.content);
+        const writerResult = await runWriterAgent(subtopic, researchResult.content, models.writer);
         currentCost += writerResult.cost;
         updateTaskState(taskId, { totalCost: currentCost, progress: baseProgress + 20 });
         addLog(taskId, 'Writer', `Section complete.`);
 
-        // Skip critic for speed - we trust the writer
         finalResults.push(writerResult.content);
       }
 
@@ -387,6 +389,87 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
               >
                 Deep (multi-agent)
               </button>
+            </div>
+
+            {/* Model Preset Selector */}
+            <div className="w-full max-w-xl mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-[var(--color-text-secondary)]">Model Preset:</span>
+                <button
+                  onClick={() => setShowModelSettings(!showModelSettings)}
+                  className="text-xs text-[var(--color-teal)] hover:underline flex items-center gap-1"
+                >
+                  <Settings size={12} />
+                  {showModelSettings ? 'Hide' : 'Customize'}
+                </button>
+              </div>
+
+              <div className="flex gap-2 flex-wrap justify-center">
+                {(Object.keys(RESEARCH_PRESETS) as Array<keyof typeof RESEARCH_PRESETS>).map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => setPreset(key as 'fast' | 'balanced' | 'quality' | 'custom')}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                      preset === key
+                        ? key === 'fast' ? "bg-[var(--color-sage)] text-[#1a1814]"
+                        : key === 'balanced' ? "bg-[var(--color-gold)] text-[#1a1814]"
+                        : key === 'quality' ? "bg-[var(--color-lavender)] text-[#1a1814]"
+                        : "bg-[var(--color-teal)] text-[#1a1814]"
+                        : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                    )}
+                    title={RESEARCH_PRESETS[key].description}
+                  >
+                    {RESEARCH_PRESETS[key].name}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center">
+                {RESEARCH_PRESETS[preset].description}
+              </p>
+
+              {/* Custom Model Settings */}
+              {showModelSettings && preset === 'custom' && (
+                <div className="mt-4 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-3">
+                  <div>
+                    <label className="text-xs text-[var(--color-text-secondary)] block mb-1">Planner Model</label>
+                    <select
+                      value={customModels.planner}
+                      onChange={(e) => setCustomModels(prev => ({ ...prev, planner: e.target.value }))}
+                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--color-teal)]"
+                    >
+                      {getResearchModels().map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--color-text-secondary)] block mb-1">Researcher Model</label>
+                    <select
+                      value={customModels.researcher}
+                      onChange={(e) => setCustomModels(prev => ({ ...prev, researcher: e.target.value }))}
+                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--color-teal)]"
+                    >
+                      {getResearchModels().map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--color-text-secondary)] block mb-1">Writer Model</label>
+                    <select
+                      value={customModels.writer}
+                      onChange={(e) => setCustomModels(prev => ({ ...prev, writer: e.target.value }))}
+                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--color-teal)]"
+                    >
+                      {getResearchModels().map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="w-full max-w-xl relative">
