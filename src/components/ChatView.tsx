@@ -19,6 +19,10 @@ interface ChatViewProps {
   apiKey: string | null;
 
   onOpenSettings: () => void;
+  
+  triggerNewChat?: boolean;
+  onNewChatTriggered?: () => void;
+  onViewInMedia?: () => void;
 }
 
 export function ChatView({
@@ -26,6 +30,9 @@ export function ChatView({
   onClearInitialInput,
   apiKey,
   onOpenSettings,
+  triggerNewChat,
+  onNewChatTriggered,
+  onViewInMedia,
 }: ChatViewProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -65,6 +72,13 @@ export function ChatView({
     loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (triggerNewChat) {
+      handleNewChat();
+      if (onNewChatTriggered) onNewChatTriggered();
+    }
+  }, [triggerNewChat, onNewChatTriggered]);
 
   useEffect(() => {
     if (activeSessionId) {
@@ -274,13 +288,14 @@ export function ChatView({
             )
           ) : (
             messages.map((msg) => (
-              <MessageWithImages 
-                key={msg.id} 
-                message={msg} 
+              <MessageWithImages
+                key={msg.id}
+                message={msg}
                 onDownload={handleDownload}
                 onEdit={setEditingImage}
                 onSavePrompt={setSavingPromptImage}
                 onFavorite={handleFavorite}
+                onViewInMedia={onViewInMedia || (() => {})}
               />
             ))
           )}
@@ -331,27 +346,48 @@ interface MessageWithImagesProps {
   onEdit: (image: MediaItem) => void;
   onSavePrompt: (image: MediaItem) => void;
   onFavorite: (image: MediaItem) => void;
+  onViewInMedia: () => void;
 }
 
 // Helper component to load images for a message
-function MessageWithImages({ message, onDownload, onEdit, onSavePrompt, onFavorite }: MessageWithImagesProps) {
+function MessageWithImages({ message, onDownload, onEdit, onSavePrompt, onFavorite, onViewInMedia }: MessageWithImagesProps) {
   const [images, setImages] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (message.imageIds && message.imageIds.length > 0) {
+      setLoading(true);
       Promise.all(message.imageIds.map((id: string) => storage.get<MediaItem>('media', id)))
-        .then(items => setImages(items.filter((i): i is MediaItem => !!i)));
+        .then(items => {
+          setImages(items.filter((i): i is MediaItem => !!i));
+          setLoading(false);
+        });
     }
   }, [message.imageIds]);
 
+  if (loading) {
+    return (
+      <div className="flex gap-4 mb-6 flex-row">
+        <div className="shrink-0 w-10 h-10 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] animate-pulse" />
+        <div className="space-y-3 w-full max-w-2xl">
+          <div className="h-10 bg-[var(--color-surface)] rounded-2xl w-3/4 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+             <div className="aspect-square bg-[var(--color-surface)] rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ChatMessageItem 
-      message={message} 
-      images={images} 
+    <ChatMessageItem
+      message={message}
+      images={images}
       onDownload={onDownload}
       onEdit={onEdit}
       onSavePrompt={onSavePrompt}
       onFavorite={onFavorite}
+      onViewInMedia={onViewInMedia}
     />
   );
 }

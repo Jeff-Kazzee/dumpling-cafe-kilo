@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Folder, Trash2, Search, Heart, Play, Grid, X } from 'lucide-react';
 import { storage, Prompt, PromptFolder } from '../lib/storage';
 import { VariableFillerModal } from './VariableFillerModal';
+import { Mascot } from './Mascot';
 import clsx from 'clsx';
 
 const generateId = () => crypto.randomUUID();
@@ -281,9 +282,10 @@ export function PromptsView({ onUsePrompt }: PromptsViewProps) {
           </div>
           
           {filteredPrompts.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-[var(--color-text-muted)] opacity-50">
-              <Search size={48} className="mb-4" />
-              <p>No prompts found.</p>
+            <div className="h-full flex flex-col items-center justify-center text-[var(--color-text-muted)] opacity-60">
+              <Mascot state="reading" className="w-32 h-32 mb-4" />
+              <p className="text-lg font-medium">No prompts found.</p>
+              <p className="text-sm">Create a new one to get started.</p>
             </div>
           )}
         </div>

@@ -2,9 +2,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Image as ImageIcon, Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2 } from 'lucide-react';
 import { storage, MediaItem } from '../lib/storage';
 import { ImageEditor } from './ImageEditor';
+import { Mascot } from './Mascot';
 
 export function MediaView() {
   const [images, setImages] = useState<MediaItem[]>([]);
@@ -74,7 +75,13 @@ export function MediaView() {
                   >
                     <Trash2 size={16} />
                   </button>
-                  <button className="p-2 bg-[var(--color-teal)] text-[#1a1814] rounded-lg hover:bg-opacity-90 transition-colors">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingImage(img);
+                    }}
+                    className="p-2 bg-[var(--color-teal)] text-[#1a1814] rounded-lg hover:bg-opacity-90 transition-colors"
+                  >
                     <Edit2 size={16} />
                   </button>
                 </div>
@@ -84,13 +91,13 @@ export function MediaView() {
         ))}
 
         {images.length === 0 && (
-            // Add some dummy images if empty so the user sees something
-            [1, 2, 3].map((i) => (
-                <div key={i} className="aspect-square bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] flex flex-col items-center justify-center text-[var(--color-text-muted)] p-4 text-center">
-                    <ImageIcon size={32} className="mb-2 opacity-20" />
-                    <p className="text-sm">Generate images in Chat to see them here.</p>
-                </div>
-            ))
+          <div className="col-span-full flex flex-col items-center justify-center py-20 text-center opacity-60">
+            <Mascot state="sleeping" className="w-32 h-32 mb-4" />
+            <h3 className="text-xl font-bold text-[var(--color-text-primary)]">No images yet</h3>
+            <p className="text-[var(--color-text-secondary)] mt-2">
+              Generate some images in the Chat tab to see them here.
+            </p>
+          </div>
         )}
       </div>
 

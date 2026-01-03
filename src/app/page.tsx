@@ -25,6 +25,9 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   const [showSettings, setShowSettings] = useState(false);
 
+  // New Chat Trigger
+  const [triggerNewChat, setTriggerNewChat] = useState(false);
+
   useEffect(() => {
     // Initialize DB + load settings.
     let mounted = true;
@@ -47,10 +50,33 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!showSettings) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowSettings(false);
+      // Global shortcuts
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('model-selector')?.focus();
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault();
+        setActiveTab('chat');
+        setTriggerNewChat(true);
+      }
+
+      // Tab switching
+      if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        if (e.key === '1') setActiveTab('chat');
+        if (e.key === '2') setActiveTab('research');
+        if (e.key === '3') setActiveTab('prompts');
+        if (e.key === '4') setActiveTab('media');
+      }
+
+      // Modal closing
+      if (e.key === 'Escape') {
+        if (showSettings) setShowSettings(false);
+      }
     };
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [showSettings]);
@@ -132,9 +158,19 @@ export default function Home() {
                 onOpenSettings={() => setShowSettings(true)}
                 initialInput={pendingPrompt}
                 onClearInitialInput={() => setPendingPrompt(null)}
+                triggerNewChat={triggerNewChat}
+                onNewChatTriggered={() => setTriggerNewChat(false)}
+                onViewInMedia={() => setActiveTab('media')}
               />
             )}
-            {activeTab === 'research' && <ResearchView />}
+            {activeTab === 'research' && (
+              <ResearchView
+                onDiscussInChat={(text) => {
+                  setPendingPrompt(text);
+                  setActiveTab('chat');
+                }}
+              />
+            )}
             {activeTab === 'prompts' && (
               <PromptsView
                 onUsePrompt={(text) => {
