@@ -355,14 +355,27 @@ function MessageWithImages({ message, onDownload, onEdit, onSavePrompt, onFavori
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     if (message.imageIds && message.imageIds.length > 0) {
       setLoading(true);
       Promise.all(message.imageIds.map((id: string) => storage.get<MediaItem>('media', id)))
         .then(items => {
-          setImages(items.filter((i): i is MediaItem => !!i));
-          setLoading(false);
+          if (isMounted) {
+            setImages(items.filter((i): i is MediaItem => !!i));
+            setLoading(false);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load images:', err);
+          if (isMounted) {
+            setImages([]);
+            setLoading(false);
+          }
         });
+    } else {
+      setImages([]);
     }
+    return () => { isMounted = false; };
   }, [message.imageIds]);
 
   if (loading) {

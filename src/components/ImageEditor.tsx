@@ -37,7 +37,6 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = image.url;
     img.onload = () => {
       setDimensions({ width: img.width, height: img.height });
       if (canvasRef.current) {
@@ -47,6 +46,10 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         saveHistory();
       }
     };
+    img.onerror = () => {
+      console.error('Failed to load image for editor');
+    };
+    img.src = image.url;
   }, [image]);
 
   // History Management

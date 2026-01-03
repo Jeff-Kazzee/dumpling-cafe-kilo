@@ -151,7 +151,11 @@ export async function generateText(
       max_tokens: maxTokens,
     });
 
-    const content = response.choices[0].message.content || '';
+    const choice = response.choices[0];
+    if (!choice) {
+      throw new Error('No completion choice returned');
+    }
+    const content = choice.message.content || '';
     const usage = response.usage;
 
     return { content, usage };
