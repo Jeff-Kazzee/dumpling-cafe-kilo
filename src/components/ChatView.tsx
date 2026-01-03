@@ -17,8 +17,6 @@ interface ChatViewProps {
   onClearInitialInput?: () => void;
 
   apiKey: string | null;
-  selectedModel: string;
-  onModelChange: (model: string) => void;
 
   onOpenSettings: () => void;
 }
@@ -27,8 +25,6 @@ export function ChatView({
   initialInput,
   onClearInitialInput,
   apiKey,
-  selectedModel,
-  onModelChange,
   onOpenSettings,
 }: ChatViewProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -302,8 +298,6 @@ export function ChatView({
           disabled={!apiKey}
           initialValue={initialInput}
           onClearInitialValue={onClearInitialInput}
-          selectedModel={selectedModel}
-          onModelChange={onModelChange}
         />
       </div>
 

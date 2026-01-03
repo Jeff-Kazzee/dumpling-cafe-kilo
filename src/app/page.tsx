@@ -10,16 +10,11 @@ import { PromptsView } from '../components/PromptsView';
 import { MediaView } from '../components/MediaView';
 import { storage, type AppSettings } from '../lib/storage';
 import { ASSETS } from '../lib/assets';
+import { CHAT_MODELS } from '../lib/models';
 
 type Tab = 'chat' | 'research' | 'prompts' | 'media';
 
-const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp:free';
-const MODEL_OPTIONS: { value: string; label: string }[] = [
-  { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash' },
-  { value: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' },
-  { value: 'openai/dall-e-3', label: 'DALL·E 3' },
-  { value: 'midjourney', label: 'Midjourney (Mock)' },
-];
+const DEFAULT_MODEL = CHAT_MODELS[0].id;
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('chat');
@@ -134,8 +129,6 @@ export default function Home() {
             {activeTab === 'chat' && (
               <ChatView
                 apiKey={apiKey}
-                selectedModel={selectedModel}
-                onModelChange={handleModelChange}
                 onOpenSettings={() => setShowSettings(true)}
                 initialInput={pendingPrompt}
                 onClearInitialInput={() => setPendingPrompt(null)}
@@ -158,7 +151,6 @@ export default function Home() {
       {showSettings && (
         <SettingsModal
           selectedModel={selectedModel}
-          modelOptions={MODEL_OPTIONS}
           apiKeyInitial={apiKey || ''}
           onClose={() => setShowSettings(false)}
           onSaveKey={handleSaveKey}
@@ -267,7 +259,6 @@ function OnboardingLanding({ onOpenSettings }: { onOpenSettings: () => void }) {
 function SettingsModal({
   apiKeyInitial,
   selectedModel,
-  modelOptions,
   onClose,
   onSaveKey,
   onClearKey,
@@ -275,7 +266,6 @@ function SettingsModal({
 }: {
   apiKeyInitial: string;
   selectedModel: string;
-  modelOptions: { value: string; label: string }[];
   onClose: () => void;
   onSaveKey: (key: string) => Promise<void>;
   onClearKey: () => Promise<void>;
@@ -283,6 +273,15 @@ function SettingsModal({
 }) {
   const [draftKey, setDraftKey] = useState(apiKeyInitial);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Group models by tier
+  const groupedModels = CHAT_MODELS.reduce((acc, model) => {
+    if (!acc[model.tier]) acc[model.tier] = [];
+    acc[model.tier].push(model);
+    return acc;
+  }, {} as Record<string, typeof CHAT_MODELS>);
+
+  const tiers: Array<keyof typeof groupedModels> = ['free', 'budget', 'mid', 'premium', 'frontier'];
 
   return (
     <div
@@ -350,11 +349,18 @@ function SettingsModal({
               onChange={(e) => onModelChange(e.target.value)}
               className="dc-input"
             >
-              {modelOptions.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
+              {tiers.map((tier) => {
+                if (!groupedModels[tier]) return null;
+                return (
+                  <optgroup key={tier} label={tier.charAt(0).toUpperCase() + tier.slice(1) + ' Tier'}>
+                    {groupedModels[tier].map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
           </div>
         </div>

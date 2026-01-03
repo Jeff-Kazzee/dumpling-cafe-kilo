@@ -6,15 +6,9 @@ import { MessageSquare, Search, Library, Image as ImageIcon, Settings } from 'lu
 import clsx from 'clsx';
 
 import { ASSETS } from '../lib/assets';
+import { CHAT_MODELS } from '../lib/models';
 
 type Tab = 'chat' | 'research' | 'prompts' | 'media';
-
-const MODEL_OPTIONS: { value: string; label: string }[] = [
-  { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash' },
-  { value: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'SDXL 1.0' },
-  { value: 'openai/dall-e-3', label: 'DALL·E 3' },
-  { value: 'midjourney', label: 'Midjourney (Mock)' },
-];
 
 interface HeaderProps {
   activeTab: Tab;
@@ -39,6 +33,15 @@ export function Header({
     { id: 'prompts', label: 'Prompts', icon: <Library size={18} /> },
     { id: 'media', label: 'Media', icon: <ImageIcon size={18} /> },
   ];
+
+  // Group models by tier
+  const groupedModels = CHAT_MODELS.reduce((acc, model) => {
+    if (!acc[model.tier]) acc[model.tier] = [];
+    acc[model.tier].push(model);
+    return acc;
+  }, {} as Record<string, typeof CHAT_MODELS>);
+
+  const tiers: Array<keyof typeof groupedModels> = ['free', 'budget', 'mid', 'premium', 'frontier'];
 
   return (
     <header className="h-16 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between px-4 shrink-0">
@@ -76,11 +79,18 @@ export function Header({
           onChange={(e) => onModelChange(e.target.value)}
           className="bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm rounded-md px-2 py-1 focus:outline-none focus:border-[var(--color-teal)] focus-visible:ring-2 focus-visible:ring-[var(--color-teal)]"
         >
-          {MODEL_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
+          {tiers.map((tier) => {
+            if (!groupedModels[tier]) return null;
+            return (
+              <optgroup key={tier} label={tier.charAt(0).toUpperCase() + tier.slice(1) + ' Tier'}>
+                {groupedModels[tier].map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })}
         </select>
         <button
           onClick={onOpenSettings}

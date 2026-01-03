@@ -2,16 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, ChevronDown } from 'lucide-react';
+import { IMAGE_MODELS } from '../lib/models';
 
 interface ChatInputProps {
   onSend: (text: string, model: string, aspectRatio: string) => void;
   disabled?: boolean;
   initialValue?: string | null;
   onClearInitialValue?: () => void;
-
-  /** Optional app-shell controlled model selection (Header + Settings). */
-  selectedModel?: string;
-  onModelChange?: (model: string) => void;
 }
 
 export function ChatInput({
@@ -19,11 +16,9 @@ export function ChatInput({
   disabled,
   initialValue,
   onClearInitialValue,
-  selectedModel,
-  onModelChange,
 }: ChatInputProps) {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState(selectedModel || 'google/gemini-2.0-flash-exp:free'); // Default model
+  const [model, setModel] = useState(IMAGE_MODELS[0].id);
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -33,13 +28,6 @@ export function ChatInput({
       if (onClearInitialValue) onClearInitialValue();
     }
   }, [initialValue, onClearInitialValue]);
-
-  useEffect(() => {
-    if (selectedModel && selectedModel !== model) {
-      setModel(selectedModel);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedModel]);
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -90,16 +78,15 @@ export function ChatInput({
             <div className="relative group">
               <select
                 value={model}
-                onChange={(e) => {
-                  setModel(e.target.value);
-                  onModelChange?.(e.target.value);
-                }}
-                className="appearance-none bg-transparent text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] pr-6 cursor-pointer focus:outline-none"
+                onChange={(e) => setModel(e.target.value)}
+                className="appearance-none bg-transparent text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] pr-6 cursor-pointer focus:outline-none max-w-[150px] truncate"
+                title={IMAGE_MODELS.find(m => m.id === model)?.description}
               >
-                <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash</option>
-                <option value="stabilityai/stable-diffusion-xl-base-1.0">SDXL 1.0</option>
-                <option value="openai/dall-e-3">DALL-E 3</option>
-                <option value="midjourney">Midjourney (Mock)</option>
+                {IMAGE_MODELS.map((m) => (
+                  <option key={m.id} value={m.id} title={m.description}>
+                    {m.name}
+                  </option>
+                ))}
               </select>
               <ChevronDown size={12} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
             </div>
