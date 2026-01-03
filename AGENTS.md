@@ -169,3 +169,12 @@ bun run build && bun run lint
 
 ### Mascot States
 `sleeping`, `waving`, `default`, `thinking`, `writing`, `reading`, `celebration`, `error`, `searching`, `coffee`
+
+---
+
+## Branching Workflow
+
+1.  **Feature Branches**: Create a new branch for every feature or phase (e.g., `feature/phase-3-research`).
+2.  **Push to Dev**: Push feature branches to the remote repository.
+3.  **Code Review**: Use CodeRabbit and Copilot for review.
+4.  **Merge**: Merge into `dev` branch after approval.

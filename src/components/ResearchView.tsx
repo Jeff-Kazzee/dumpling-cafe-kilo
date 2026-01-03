@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, CheckCircle, Play, Terminal, FileText, Clock } from 'lucide-react';
+import { Search, Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { storage, ResearchTask } from '../lib/storage';
+import { runPlannerAgent, runResearcherAgent, runWriterAgent, runCriticAgent } from '../lib/research';
 import clsx from 'clsx';
 
 const generateId = () => crypto.randomUUID();
@@ -42,7 +43,8 @@ export function ResearchView() {
       progress: 0,
       results: [],
       timestamp: Date.now(),
-      logs: [{ agent: 'System', message: 'Research task initialized.', timestamp: Date.now() }]
+      logs: [{ agent: 'System', message: 'Research task initialized.', timestamp: Date.now() }],
+      totalCost: 0
     };
 
     setTasks(prev => [task, ...prev]);
@@ -50,7 +52,7 @@ export function ResearchView() {
     setNewQuery('');
     await storage.save('research', task);
 
-    simulateResearch(task.id);
+    executeResearch(task.id, task.query);
   };
 
   const addLog = (taskId: string, agent: string, message: string) => {
@@ -67,10 +69,10 @@ export function ResearchView() {
     }));
   };
 
-  const updateProgress = (taskId: string, progress: number, status?: ResearchTask['status']) => {
+  const updateTaskState = (taskId: string, updates: Partial<ResearchTask>) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
-        const updated = { ...t, progress, ...(status ? { status } : {}) };
+        const updated = { ...t, ...updates };
         storage.save('research', updated);
         return updated;
       }
@@ -78,53 +80,91 @@ export function ResearchView() {
     }));
   };
 
-  const simulateResearch = async (taskId: string) => {
-    const steps = [
-      { agent: 'Planner', msg: 'Analyzing research query...', duration: 1000 },
-      { agent: 'Planner', msg: 'Decomposing into sub-tasks: Market Analysis, Competitor Review, Future Trends.', duration: 1500 },
-      { agent: 'Searcher', msg: 'Searching for "latest trends in ' + newQuery + '"...', duration: 2000 },
-      { agent: 'Searcher', msg: 'Found 12 relevant sources from reputable domains.', duration: 1000 },
-      { agent: 'Analyst', msg: 'Reading Source 1: Industry Report 2024...', duration: 1500 },
-      { agent: 'Analyst', msg: 'Reading Source 2: TechCrunch Article...', duration: 1500 },
-      { agent: 'Analyst', msg: 'Extracting key insights and data points...', duration: 2000 },
-      { agent: 'Writer', msg: 'Synthesizing findings into executive summary...', duration: 1500 },
-      { agent: 'Writer', msg: 'Formatting final report...', duration: 1000 },
-    ];
-
-    let currentStep = 0;
+  const executeResearch = async (taskId: string, query: string) => {
+    let currentCost = 0;
     
-    const runStep = () => {
-      if (currentStep >= steps.length) {
-        updateProgress(taskId, 100, 'completed');
-        setTasks(prev => prev.map(t => {
-          if (t.id === taskId) {
-            const updated = {
-              ...t,
-              results: [
-                'Market is projected to grow by 15% CAGR.',
-                'Key competitors are investing heavily in AI integration.',
-                'Regulatory challenges remain a primary concern.',
-                'Consumer sentiment is shifting towards sustainable options.'
-              ]
-            };
-            storage.save('research', updated);
-            return updated;
-          }
-          return t;
-        }));
-        addLog(taskId, 'System', 'Research completed successfully.');
-        return;
+    try {
+      // 1. Planner Agent
+      addLog(taskId, 'Planner', `Analyzing topic: "${query}"...`);
+      const plannerResult = await runPlannerAgent(query);
+      currentCost += plannerResult.cost;
+      updateTaskState(taskId, { totalCost: currentCost, progress: 10 });
+
+      let subtopics: string[] = [];
+      try {
+        // Attempt to parse JSON array from content
+        const jsonMatch = plannerResult.content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          subtopics = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('Failed to parse planner output');
+        }
+      } catch (e) {
+        console.error('Planner parse error:', e);
+        addLog(taskId, 'Planner', 'Failed to parse plan. Using default structure.');
+        subtopics = ['Overview', 'Key Findings', 'Conclusion'];
       }
 
-      const step = steps[currentStep];
-      addLog(taskId, step.agent, step.msg);
-      updateProgress(taskId, Math.round(((currentStep + 1) / steps.length) * 90));
-      
-      currentStep++;
-      setTimeout(runStep, step.duration);
-    };
+      addLog(taskId, 'Planner', `Plan created: ${subtopics.join(', ')}`);
+      updateTaskState(taskId, { progress: 20 });
 
-    runStep();
+      const finalResults: string[] = [];
+
+      // 2. Execute loop for each subtopic
+      for (let i = 0; i < subtopics.length; i++) {
+        const subtopic = subtopics[i];
+        const progressStep = 20 + ((i / subtopics.length) * 70); // Distribute remaining progress
+        
+        // Researcher
+        addLog(taskId, 'Researcher', `Researching: "${subtopic}"...`);
+        updateTaskState(taskId, { progress: progressStep });
+        const researchResult = await runResearcherAgent(subtopic);
+        currentCost += researchResult.cost;
+        updateTaskState(taskId, { totalCost: currentCost });
+        addLog(taskId, 'Researcher', `Found data for ${subtopic}.`);
+
+        // Writer
+        addLog(taskId, 'Writer', `Drafting section: "${subtopic}"...`);
+        let writerResult = await runWriterAgent(subtopic, researchResult.content);
+        currentCost += writerResult.cost;
+        updateTaskState(taskId, { totalCost: currentCost });
+
+        // Critic Loop
+        addLog(taskId, 'Critic', `Reviewing draft for ${subtopic}...`);
+        const criticResult = await runCriticAgent(writerResult.content);
+        currentCost += criticResult.cost;
+        updateTaskState(taskId, { totalCost: currentCost });
+
+        if (!criticResult.passed) {
+          addLog(taskId, 'Critic', `Critique: Score ${criticResult.score}/10. Requesting revision.`);
+          addLog(taskId, 'Writer', `Revising "${subtopic}" based on feedback...`);
+          
+          // Revision
+          writerResult = await runWriterAgent(subtopic, researchResult.content, criticResult.content);
+          currentCost += writerResult.cost;
+          updateTaskState(taskId, { totalCost: currentCost });
+          addLog(taskId, 'Writer', 'Revision complete.');
+        } else {
+          addLog(taskId, 'Critic', `Critique: Score ${criticResult.score}/10. Approved.`);
+        }
+
+        finalResults.push(writerResult.content);
+      }
+
+      // Complete
+      updateTaskState(taskId, { 
+        status: 'completed', 
+        progress: 100, 
+        results: finalResults,
+        totalCost: currentCost
+      });
+      addLog(taskId, 'System', 'Research completed successfully.');
+
+    } catch (error) {
+      console.error('Research error:', error);
+      addLog(taskId, 'System', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      updateTaskState(taskId, { status: 'failed', totalCost: currentCost });
+    }
   };
 
   const activeTask = tasks.find(t => t.id === activeTaskId);
@@ -158,6 +198,7 @@ export function ResearchView() {
                   "px-2 py-0.5 rounded-full",
                   task.status === 'completed' ? "bg-[var(--color-sage)]/20 text-[var(--color-sage)]" :
                   task.status === 'researching' ? "bg-[var(--color-gold)]/20 text-[var(--color-gold)]" :
+                  task.status === 'failed' ? "bg-[var(--color-coral)]/20 text-[var(--color-coral)]" :
                   "bg-[var(--color-text-muted)]/20 text-[var(--color-text-muted)]"
                 )}>
                   {task.status}
@@ -175,11 +216,22 @@ export function ResearchView() {
           <div className="flex-1 flex flex-col h-full overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-              <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">{activeTask.query}</h2>
+              <div className="flex justify-between items-start mb-2">
+                <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">{activeTask.query}</h2>
+                <div className="flex items-center gap-2 bg-[var(--color-background)] px-3 py-1 rounded-full border border-[var(--color-border)]">
+                  <DollarSign size={14} className="text-[var(--color-gold)]" />
+                  <span className="text-sm font-mono text-[var(--color-text-primary)]">
+                    ${(activeTask.totalCost || 0).toFixed(4)}
+                  </span>
+                </div>
+              </div>
+              
               <div className="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">
                 <span className="flex items-center gap-1"><Clock size={14} /> {new Date(activeTask.timestamp).toLocaleString()}</span>
                 <span className="flex items-center gap-1">
-                  {activeTask.status === 'researching' ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                  {activeTask.status === 'researching' ? <Loader2 size={14} className="animate-spin" /> : 
+                   activeTask.status === 'failed' ? <AlertCircle size={14} className="text-[var(--color-coral)]" /> :
+                   <CheckCircle size={14} />}
                   {activeTask.status.toUpperCase()}
                 </span>
               </div>
@@ -205,14 +257,15 @@ export function ResearchView() {
                     <FileText size={20} />
                     <h3 className="font-bold text-lg">Research Findings</h3>
                   </div>
-                  <ul className="space-y-3">
+                  <div className="space-y-6">
                     {activeTask.results.map((result, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-[var(--color-text-primary)]">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--color-teal)] shrink-0" />
-                        <span className="leading-relaxed">{result}</span>
-                      </li>
+                      <div key={idx} className="prose prose-invert max-w-none border-b border-[var(--color-border)] last:border-0 pb-6 last:pb-0">
+                        <div className="whitespace-pre-wrap text-[var(--color-text-primary)] leading-relaxed">
+                          {result}
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 
@@ -231,8 +284,8 @@ export function ResearchView() {
                       <span className={clsx(
                         "font-bold shrink-0 w-20",
                         log.agent === 'Planner' ? "text-[var(--color-gold)]" :
-                        log.agent === 'Searcher' ? "text-[var(--color-teal)]" :
-                        log.agent === 'Analyst' ? "text-[var(--color-coral)]" :
+                        log.agent === 'Researcher' ? "text-[var(--color-teal)]" :
+                        log.agent === 'Critic' ? "text-[var(--color-coral)]" :
                         log.agent === 'Writer' ? "text-[var(--color-lavender)]" :
                         "text-[var(--color-text-secondary)]"
                       )}>

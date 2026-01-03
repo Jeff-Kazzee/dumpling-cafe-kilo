@@ -134,3 +134,29 @@ export async function editImage(
     throw error;
   }
 }
+
+export async function generateText(
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  model: string,
+  temperature: number = 0.7,
+  maxTokens: number = 4000
+): Promise<{ content: string; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } }> {
+  const client = await getClient();
+
+  try {
+    const response = await client.chat.completions.create({
+      model: model,
+      messages: messages,
+      temperature: temperature,
+      max_tokens: maxTokens,
+    });
+
+    const content = response.choices[0].message.content || '';
+    const usage = response.usage;
+
+    return { content, usage };
+  } catch (error) {
+    console.error('Text generation error:', error);
+    throw error;
+  }
+}

@@ -51,6 +51,7 @@ export interface ResearchTask {
   results: string[];
   timestamp: number;
   logs?: { agent: string; message: string; timestamp: number }[];
+  totalCost?: number;
 }
 
 export interface AppSettings {
