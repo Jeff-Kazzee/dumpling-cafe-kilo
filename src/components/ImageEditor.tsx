@@ -56,7 +56,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const saveHistory = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     const newHistory = history.slice(0, historyStep + 1);
@@ -84,7 +84,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const restoreHistory = (step: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     ctx.putImageData(history[step], 0, 0);
   };
@@ -92,7 +92,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const handleClear = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     saveHistory();
@@ -102,7 +102,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -118,7 +118,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
