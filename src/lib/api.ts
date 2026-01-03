@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { AppSettings, storage } from './storage';
+import { getSystemPrompt } from './prompts';
 
 async function getClient() {
   const settings = await storage.get<AppSettings>('settings', 'settings');
@@ -150,10 +151,16 @@ export async function generateText(
 ): Promise<{ content: string; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } }> {
   const client = await getClient();
 
+  // Prepend system prompt if not already present
+  const hasSystemPrompt = messages.some(m => m.role === 'system');
+  const messagesWithSystem = hasSystemPrompt
+    ? messages
+    : [{ role: 'system' as const, content: getSystemPrompt('chat') }, ...messages];
+
   try {
     const response = await client.chat.completions.create({
       model: model,
-      messages: messages,
+      messages: messagesWithSystem,
       temperature: temperature,
       max_tokens: maxTokens,
     });
@@ -181,11 +188,17 @@ export async function generateTextWithSearch(
 
   console.log('[API] generateTextWithSearch called:', { model, messagesCount: messages.length });
 
+  // Prepend web search system prompt
+  const hasSystemPrompt = messages.some(m => m.role === 'system');
+  const messagesWithSystem = hasSystemPrompt
+    ? messages
+    : [{ role: 'system' as const, content: getSystemPrompt('webSearch') }, ...messages];
+
   try {
     // Use :online suffix for web search
     const response = await client.chat.completions.create({
       model: `${model}:online`,  // Appends web search capability
-      messages: messages,
+      messages: messagesWithSystem,
       temperature: 0.7,
       max_tokens: 4000,
     });
@@ -213,9 +226,15 @@ export async function generateTextWithReasoning(
 
   console.log('[API] generateTextWithReasoning called:', { model, effort, messagesCount: messages.length });
 
+  // Prepend reasoning system prompt
+  const hasSystemPrompt = messages.some(m => m.role === 'system');
+  const messagesWithSystem = hasSystemPrompt
+    ? messages
+    : [{ role: 'system' as const, content: getSystemPrompt('reasoning') }, ...messages];
+
   const requestBody: Record<string, unknown> = {
     model: model,
-    messages: messages,
+    messages: messagesWithSystem,
     extra_body: {
       reasoning: {
         effort: effort,
