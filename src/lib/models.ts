@@ -16,6 +16,7 @@ export interface ImageModel {
   pricing: string;
   description: string;
   tier: 'budget' | 'mid' | 'premium';
+  supportsEditing?: boolean; // Whether model supports vision input + image output for editing
 }
 
 export const CHAT_MODELS: ChatModel[] = [
@@ -258,6 +259,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricing: '$0.30/M input, $2.50/M output',
     description: 'Fast, affordable, great for iteration',
     tier: 'budget',
+    supportsEditing: true, // Gemini supports vision input + image output
   },
   {
     id: 'bytedance-seed/seedream-4.5',
@@ -266,6 +268,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricing: '$0.04/image flat',
     description: 'Excellent portraits and text rendering',
     tier: 'budget',
+    supportsEditing: true, // Supports editing consistency
   },
   {
     id: 'black-forest-labs/flux.2-max',
@@ -274,14 +277,16 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricing: '~$0.07/image',
     description: 'Highest quality, best for final output',
     tier: 'premium',
+    supportsEditing: false, // Text-to-image only
   },
   {
     id: 'black-forest-labs/flux.2-flex',
     name: 'FLUX.2 Flex',
     provider: 'Black Forest Labs',
     pricing: '$0.06/MP',
-    description: 'Best text rendering and typography. Great for edits.',
+    description: 'Best text rendering and typography',
     tier: 'mid',
+    supportsEditing: false, // Text-to-image only
   },
   {
     id: 'sourceful/riverflow-v2-max-preview',
@@ -290,6 +295,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricing: '$0.075/image flat',
     description: 'Strong image-to-image editing',
     tier: 'mid',
+    supportsEditing: true, // Explicitly supports image-to-image
   },
   {
     id: 'google/gemini-3-pro-image-preview',
@@ -298,6 +304,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricing: '$2/M input, $12/M output',
     description: 'Most advanced, 4K output, identity preservation',
     tier: 'premium',
+    supportsEditing: true, // Supports localized edits
   },
   {
     id: 'openai/gpt-5-image-mini',
@@ -306,5 +313,9 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricing: '$2.50/M input, $2/M output',
     description: 'Great instruction following',
     tier: 'mid',
+    supportsEditing: true, // Has detailed image editing
   },
 ];
+
+// Filter for models that support image editing (vision input + image output)
+export const EDIT_CAPABLE_MODELS = IMAGE_MODELS.filter(m => m.supportsEditing);
