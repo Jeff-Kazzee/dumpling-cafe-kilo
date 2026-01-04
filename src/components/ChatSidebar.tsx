@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { ChatSession } from '../lib/storage';
 import clsx from 'clsx';
 
@@ -11,14 +11,18 @@ interface ChatSidebarProps {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string, e: React.MouseEvent) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function ChatSidebar({ 
-  sessions, 
-  activeSessionId, 
-  onSelectSession, 
+export function ChatSidebar({
+  sessions,
+  activeSessionId,
+  onSelectSession,
   onNewChat,
-  onDeleteSession 
+  onDeleteSession,
+  isCollapsed = false,
+  onToggleCollapse
 }: ChatSidebarProps) {
   
   const groupSessions = () => {
@@ -51,9 +55,43 @@ export function ChatSidebar({
 
   const grouped = groupSessions();
 
+  // Collapsed state - just show toggle button
+  if (isCollapsed) {
+    return (
+      <div className="w-12 bg-[var(--color-surface)] border-r border-[var(--color-border)] flex flex-col h-full shrink-0">
+        <div className="p-2">
+          <button
+            onClick={onToggleCollapse}
+            className="w-full flex items-center justify-center p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+            title="Expand sidebar"
+          >
+            <PanelLeft size={20} />
+          </button>
+          <button
+            onClick={onNewChat}
+            className="w-full flex items-center justify-center p-2 mt-2 bg-[var(--color-teal)] text-[#1a1814] rounded-lg hover:bg-opacity-90 transition-colors"
+            title="New Chat"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-64 bg-[var(--color-surface)] border-r border-[var(--color-border)] flex flex-col h-full shrink-0">
       <div className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={onToggleCollapse}
+            className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+            title="Collapse sidebar"
+          >
+            <PanelLeftClose size={18} />
+          </button>
+          <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Chats</span>
+        </div>
         <button
           onClick={onNewChat}
           className="w-full flex items-center justify-center gap-2 bg-[var(--color-teal)] text-[#1a1814] py-2.5 rounded-lg font-medium hover:bg-opacity-90 transition-colors"

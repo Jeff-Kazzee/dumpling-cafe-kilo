@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle, MessageSquare, Trash2, Plus, Settings } from 'lucide-react';
+import { Loader2, CheckCircle, Play, Terminal, FileText, Clock, DollarSign, AlertCircle, MessageSquare, Trash2, Plus, Settings, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { storage, ResearchTask } from '../lib/storage';
 import { runPlannerAgent, runResearcherAgent, runWriterAgent, runQuickResearch, RESEARCH_PRESETS, ResearchModels, getResearchModels } from '../lib/research';
 import { Mascot } from './Mascot';
@@ -22,6 +22,7 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
   const [preset, setPreset] = useState<'fast' | 'balanced' | 'quality' | 'custom'>('fast');
   const [customModels, setCustomModels] = useState<ResearchModels>(RESEARCH_PRESETS.fast.models);
   const [showModelSettings, setShowModelSettings] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -208,53 +209,84 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
 
   return (
     <div className="h-full flex bg-[var(--color-background)]">
-      {/* Sidebar Task List */}
-      <div className="w-80 border-r border-[var(--color-border)] flex flex-col bg-[var(--color-surface)] shrink-0">
-        <div className="p-4 border-b border-[var(--color-border)]">
-          <button
-            onClick={handleNewResearch}
-            className="w-full bg-[var(--color-teal)] text-[#1a1814] py-2 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-opacity-90"
-          >
-            <Plus size={16} /> New Research
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          {tasks.map(task => (
-            <div
-              key={task.id}
-              onClick={() => { setActiveTaskId(task.id); setShowNewResearch(false); }}
-              className={clsx(
-                "p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors group",
-                activeTaskId === task.id && !showNewResearch ? "bg-[var(--color-surface-active)]" : ""
-              )}
+      {/* Sidebar Task List - Collapsible */}
+      {sidebarCollapsed ? (
+        <div className="w-12 border-r border-[var(--color-border)] flex flex-col bg-[var(--color-surface)] shrink-0">
+          <div className="p-2">
+            <button
+              onClick={() => setSidebarCollapsed(false)}
+              className="w-full flex items-center justify-center p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+              title="Expand sidebar"
             >
-              <div className="flex justify-between items-start gap-2">
-                <h3 className="font-medium text-[var(--color-text-primary)] line-clamp-1 mb-1 flex-1">{task.query}</h3>
-                <button
-                  onClick={(e) => deleteTask(task.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--color-coral)]/20 rounded transition-all"
-                  title="Delete research"
-                >
-                  <Trash2 size={14} className="text-[var(--color-coral)]" />
-                </button>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className={clsx(
-                  "px-2 py-0.5 rounded-full",
-                  task.status === 'completed' ? "bg-[var(--color-sage)]/20 text-[var(--color-sage)]" :
-                  task.status === 'researching' ? "bg-[var(--color-gold)]/20 text-[var(--color-gold)]" :
-                  task.status === 'failed' ? "bg-[var(--color-coral)]/20 text-[var(--color-coral)]" :
-                  "bg-[var(--color-text-muted)]/20 text-[var(--color-text-muted)]"
-                )}>
-                  {task.status}
-                </span>
-                <span className="text-[var(--color-text-muted)]">{new Date(task.timestamp).toLocaleDateString()}</span>
-              </div>
-            </div>
-          ))}
+              <PanelLeft size={20} />
+            </button>
+            <button
+              onClick={handleNewResearch}
+              className="w-full flex items-center justify-center p-2 mt-2 bg-[var(--color-teal)] text-[#1a1814] rounded-lg hover:bg-opacity-90 transition-colors"
+              title="New Research"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="w-80 border-r border-[var(--color-border)] flex flex-col bg-[var(--color-surface)] shrink-0">
+          <div className="p-4 border-b border-[var(--color-border)]">
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+                title="Collapse sidebar"
+              >
+                <PanelLeftClose size={18} />
+              </button>
+              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Research</span>
+            </div>
+            <button
+              onClick={handleNewResearch}
+              className="w-full bg-[var(--color-teal)] text-[#1a1814] py-2 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-opacity-90"
+            >
+              <Plus size={16} /> New Research
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {tasks.map(task => (
+              <div
+                key={task.id}
+                onClick={() => { setActiveTaskId(task.id); setShowNewResearch(false); }}
+                className={clsx(
+                  "p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors group",
+                  activeTaskId === task.id && !showNewResearch ? "bg-[var(--color-surface-active)]" : ""
+                )}
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <h3 className="font-medium text-[var(--color-text-primary)] line-clamp-1 mb-1 flex-1">{task.query}</h3>
+                  <button
+                    onClick={(e) => deleteTask(task.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--color-coral)]/20 rounded transition-all"
+                    title="Delete research"
+                  >
+                    <Trash2 size={14} className="text-[var(--color-coral)]" />
+                  </button>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className={clsx(
+                    "px-2 py-0.5 rounded-full",
+                    task.status === 'completed' ? "bg-[var(--color-sage)]/20 text-[var(--color-sage)]" :
+                    task.status === 'researching' ? "bg-[var(--color-gold)]/20 text-[var(--color-gold)]" :
+                    task.status === 'failed' ? "bg-[var(--color-coral)]/20 text-[var(--color-coral)]" :
+                    "bg-[var(--color-text-muted)]/20 text-[var(--color-text-muted)]"
+                  )}>
+                    {task.status}
+                  </span>
+                  <span className="text-[var(--color-text-muted)]">{new Date(task.timestamp).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -358,7 +390,8 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="min-h-full flex flex-col items-center justify-center text-center">
             <Mascot state="searching" className="w-32 h-32 mb-6" />
             <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">Start New Research</h2>
             <p className="text-[var(--color-text-secondary)] max-w-md mb-6">
@@ -492,11 +525,12 @@ export function ResearchView({ onDiscussInChat }: ResearchViewProps) {
               </button>
             </div>
 
-            <p className="text-xs text-[var(--color-text-muted)] mt-4">
+            <p className="text-xs text-[var(--color-text-muted)] mt-4 pb-8">
               {researchMode === 'quick'
                 ? "Uses web search for fast, factual answers"
                 : "Uses Planner → Researcher → Writer agents for comprehensive reports"}
             </p>
+            </div>
           </div>
         )}
       </div>

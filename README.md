@@ -255,7 +255,7 @@ Open [http://localhost:3000](http://localhost:3000)
 bun test
 
 # Run with integration tests (requires OpenRouter API key)
-OPENROUTER_API_KEY=sk-or-v1-xxx bun test
+OPENROUTER_API_KEY=your-key-here bun test
 
 # Watch mode
 bun test --watch

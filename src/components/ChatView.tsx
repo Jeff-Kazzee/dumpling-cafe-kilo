@@ -38,7 +38,8 @@ export function ChatView({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [mascotState, setMascotState] = useState<MascotState>('default');
-  
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   // Modals
   const [editingImage, setEditingImage] = useState<MediaItem | null>(null);
   const [savingPromptImage, setSavingPromptImage] = useState<MediaItem | null>(null);
@@ -286,12 +287,14 @@ export function ChatView({
   return (
     <div className="flex h-full relative">
       {/* Sidebar */}
-      <ChatSidebar 
+      <ChatSidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
         onSelectSession={setActiveSessionId}
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       {/* Main Chat Area */}
